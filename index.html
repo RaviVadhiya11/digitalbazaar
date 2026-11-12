@@ -53,7 +53,7 @@ function render(){
  const data=items.filter(x=>(activeFilter==="All"||x.filter===activeFilter)&&(activeCat==="All"||x.cat===activeCat)&&(`${x.title} ${x.cat} ${x.seller}`).toLowerCase().includes(q));
  target.innerHTML=data.length?data.map(x=>`<article class="product"><div class="cover ${x.style}"><div class="poster">${x.art}</div></div><div class="product-info"><div class="tag">${x.cat} · ${x.badge}</div><h3>${x.title}</h3><div class="seller">by ${x.seller}</div><div class="price-row"><span class="price">${x.price}</span><span class="rating">${x.rating}</span></div><div class="product-actions"><button class="btn light" onclick="showToast('Product details coming soon.')">Details</button><button class="btn primary" onclick="showToast('Checkout is not connected yet.')">Get product</button></div></div></article>`).join(""):'<div class="empty">No products found.</div>';
 }
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded",async()=>{
  const search=document.getElementById("search");if(search)search.addEventListener("input",render);
  document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{activeFilter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x===b));render();}));
  document.querySelectorAll("[data-cat]").forEach(b=>b.addEventListener("click",()=>{activeCat=b.dataset.cat;activeFilter="All";render();}));
