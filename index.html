@@ -33,6 +33,7 @@ footer{background:#14251b;color:#e8f1e9;padding:35px 0 25px}.footgrid{display:gr
 const SUPABASE_URL="https://hfktnvijiugsanrhltex.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_Adx9FTenFnfBF074Kt428g_tmfY-oPL";
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let activeFilter="All",activeCat="All";
 const items=[
 {title:"Modern Brand Identity Kit",cat:"Templates",seller:"Studio North",price:"$12",rating:"★ 4.9",badge:"Bestseller",filter:"Popular",style:"c1",art:"BRAND<br>IDENTITY"},
 {title:"Warm Editorial Instagram Pack",cat:"Graphics",seller:"Mira Creates",price:"$8",rating:"★ 4.8",badge:"Trending",filter:"Popular",style:"c2",art:"SOCIAL<br>STUDIO"},
@@ -42,13 +43,72 @@ const items=[
 {title:"Small Business Planner",cat:"E-books",seller:"The Paper Lab",price:"$7",rating:"★ 4.8",badge:"New",filter:"New",style:"c6",art:"PLAN<br>BETTER"},
 {title:"Creator Starter Mega Bundle",cat:"Bundles",seller:"Digital Nest",price:"$19",rating:"★ 4.9",badge:"Value pack",filter:"Popular",style:"c7",art:"CREATOR<br>BUNDLE"},
 {title:"Watercolor Floral Clipart",cat:"Graphics",seller:"Bloom Assets",price:"$5",rating:"★ 4.8",badge:"New",filter:"New",style:"c8",art:"BOTANICAL<br>ART"}];
-let activeFilter="All",activeCat="All";function render(){const q=(document.getElementById("search").value||"").toLowerCase();const data=items.filter(x=>(activeFilter==="All"||x.filter===activeFilter)&&(activeCat==="All"||x.cat===activeCat)&&(`${x.title} ${x.cat} ${x.seller}`).toLowerCase().includes(q));document.getElementById("products").innerHTML=data.length?data.map(x=>`<article class="product"><div class="cover ${x.style}"><div class="poster">${x.art}</div></div><div class="product-info"><div class="tag">${x.cat} · ${x.badge}</div><h3>${x.title}</h3><div class="seller">by ${x.seller}</div><div class="price-row"><span class="price">${x.price}</span><span class="rating">${x.rating}</span></div><div class="product-actions"><button class="btn light" onclick="showToast('Product details page is coming soon.')">Details</button><button class="btn primary" onclick="showToast('Checkout is not connected in this prototype.')">Get product</button></div></div></article>`).join(""):'<div class="empty">No products found. Try another search or category.</div>'}document.getElementById("search").addEventListener("input",render);document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{activeFilter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x===b));render()}));document.querySelectorAll("[data-cat]").forEach(b=>b.addEventListener("click",()=>{activeCat=b.dataset.cat;activeFilter="All";document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x.dataset.filter==="All"));render()}));function openModal(id){document.getElementById(id).classList.add("open")}function closeModal(id){document.getElementById(id).classList.remove("open")}const loginBtn=document.querySelector(".actions .light"),sellBtn=document.querySelector(".actions .primary");async function refreshAuthUI(){const {data:{session}}=await db.auth.getSession();if(session){loginBtn.textContent="Account";loginBtn.onclick=()=>openModal("accountModal");sellBtn.textContent="Seller dashboard";sellBtn.onclick=()=>openModal("accountModal");document.getElementById("accountEmail").textContent=session.user.email||"Signed in";}else{loginBtn.textContent="Log in";loginBtn.onclick=()=>openModal("loginModal");sellBtn.textContent="Sell on Bazaar";sellBtn.onclick=()=>openModal("sellModal");}}document.getElementById("signupForm").addEventListener("submit",async e=>{e.preventDefault();const b=e.currentTarget.querySelector("button[type=submit]"),m=document.getElementById("signupMessage");b.disabled=true;m.textContent="Creating account…";const shop=document.getElementById("shopName").value.trim(),category=document.getElementById("shopCategory").value,description=document.getElementById("shopDescription").value.trim(),email=document.getElementById("signupEmail").value.trim(),password=document.getElementById("signupPassword").value;const {data,error}=await db.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname,data:{account_type:"seller",shop_name:shop,product_category:category,description}}});b.disabled=false;if(error){m.textContent=error.message;return;}closeModal("sellModal");e.currentTarget.reset();showToast(data.session?"Account created.":"Check your email and click the confirmation link.");});document.getElementById("loginForm").addEventListener("submit",async e=>{e.preventDefault();const b=e.currentTarget.querySelector("button[type=submit]"),m=document.getElementById("loginMessage");b.disabled=true;m.textContent="Signing in…";const {error}=await db.auth.signInWithPassword({email:document.getElementById("loginEmail").value.trim(),password:document.getElementById("loginPassword").value});b.disabled=false;if(error){m.textContent=error.message;return;}closeModal("loginModal");e.currentTarget.reset();await refreshAuthUI();openModal("accountModal");await loadSellerProfile();});async function loadSellerProfile(){const {data:{user}}=await db.auth.getUser();if(!user)return;const {data,error}=await db.from("seller_profiles").select("shop_name,product_category,description,status").eq("user_id",user.id).maybeSingle();const box=document.getElementById("sellerStatus");if(error){box.textContent="Could not load profile: "+error.message;return;}if(!data){box.textContent="No seller application found for this account.";return;}box.textContent="Shop: "+data.shop_name+" · Category: "+data.product_category+" · Status: "+data.status+". You are approved. You can upload digital products below.";}async function loadMyProducts(){
- const box=document.getElementById("myProducts");
- const {data:{user}}=await db.auth.getUser();if(!user)return;
- const {data,error}=await db.from("products").select("id,title,price,category,status,created_at").eq("seller_id",user.id).order("created_at",{ascending:false});
- if(error){box.textContent="Could not load products: "+error.message;return;}
- if(!data.length){box.textContent="No products uploaded yet.";return;}
- box.innerHTML=data.map(p=>'<div style="padding:10px 0;border-bottom:1px solid #e6ebe6"><strong>'+escapeHtml(p.title)+'</strong><div style="font-size:12px;color:#69766e">'+escapeHtml(p.category)+' · closeModal("accountModal");await refreshAuthUI();showToast("You have been logged out.");}db.auth.onAuthStateChange((_event,session)=>{refreshAuthUI();if(session)setTimeout(loadSellerProfile,0);});refreshAuthUI();document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open")}));let toastTimer;function showToast(s){const t=document.getElementById("toast");t.textContent=s;t.style.display="block";clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display="none",3200)}render();
+function showToast(s){const t=document.getElementById("toast");if(!t)return;t.textContent=s;t.style.display="block";setTimeout(()=>t.style.display="none",3200);}
+function openModal(id){const m=document.getElementById(id);if(m)m.classList.add("open");}
+function closeModal(id){const m=document.getElementById(id);if(m)m.classList.remove("open");}
+function render(){
+ const search=document.getElementById("search");
+ const q=(search?search.value:"").toLowerCase();
+ const target=document.getElementById("products");if(!target)return;
+ const data=items.filter(x=>(activeFilter==="All"||x.filter===activeFilter)&&(activeCat==="All"||x.cat===activeCat)&&(`${x.title} ${x.cat} ${x.seller}`).toLowerCase().includes(q));
+ target.innerHTML=data.length?data.map(x=>`<article class="product"><div class="cover ${x.style}"><div class="poster">${x.art}</div></div><div class="product-info"><div class="tag">${x.cat} · ${x.badge}</div><h3>${x.title}</h3><div class="seller">by ${x.seller}</div><div class="price-row"><span class="price">${x.price}</span><span class="rating">${x.rating}</span></div><div class="product-actions"><button class="btn light" onclick="showToast('Product details coming soon.')">Details</button><button class="btn primary" onclick="showToast('Checkout is not connected yet.')">Get product</button></div></div></article>`).join(""):'<div class="empty">No products found.</div>';
+}
+document.addEventListener("DOMContentLoaded",()=>{
+ const search=document.getElementById("search");if(search)search.addEventListener("input",render);
+ document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{activeFilter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x===b));render();}));
+ document.querySelectorAll("[data-cat]").forEach(b=>b.addEventListener("click",()=>{activeCat=b.dataset.cat;activeFilter="All";render();}));
+ document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open");}));
+ const loginBtn=document.querySelector(".actions .light");
+ const sellBtn=document.querySelector(".actions .primary");
+ async function refreshAuthUI(){
+  const {data:{session}}=await db.auth.getSession();
+  if(session){loginBtn.textContent="Account";loginBtn.onclick=()=>{openModal("accountModal");loadSellerProfile();loadMyProducts();};sellBtn.textContent="Seller dashboard";sellBtn.onclick=()=>{openModal("accountModal");loadSellerProfile();loadMyProducts();};document.getElementById("accountEmail").textContent=session.user.email||"Signed in";}
+  else{loginBtn.textContent="Log in";loginBtn.onclick=()=>openModal("loginModal");sellBtn.textContent="Sell on Bazaar";sellBtn.onclick=()=>openModal("sellModal");}
+ }
+ async function loadSellerProfile(){
+  const {data:{user}}=await db.auth.getUser();if(!user)return;
+  const {data,error}=await db.from("seller_profiles").select("shop_name,product_category,status").eq("user_id",user.id).maybeSingle();
+  const box=document.getElementById("sellerStatus");if(error){box.textContent="Profile error: "+error.message;return;}
+  if(!data){box.textContent="No seller profile found.";return;}
+  box.textContent="Shop: "+data.shop_name+" · Category: "+data.product_category+" · Status: "+data.status+".";
+ }
+ async function loadMyProducts(){
+  const box=document.getElementById("myProducts");const {data:{user}}=await db.auth.getUser();if(!user)return;
+  const {data,error}=await db.from("products").select("id,title,price,category,status,created_at").eq("seller_id",user.id).order("created_at",{ascending:false});
+  if(error){box.textContent="Products: "+error.message;return;}
+  if(!data.length){box.textContent="No products uploaded yet.";return;}
+  box.innerHTML=data.map(p=>"<div style='padding:10px 0;border-bottom:1px solid #e6ebe6'><strong>"+escapeHtml(p.title)+"</strong><div style='font-size:12px;color:#69766e'>"+escapeHtml(p.category)+" · $"+Number(p.price).toFixed(2)+" · "+escapeHtml(p.status)+"</div></div>").join("");
+ }
+ function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+ document.getElementById("signupForm").addEventListener("submit",async e=>{
+  e.preventDefault();const b=e.currentTarget.querySelector("button[type=submit]"),m=document.getElementById("signupMessage");b.disabled=true;m.textContent="Creating account…";
+  const {data,error}=await db.auth.signUp({email:document.getElementById("signupEmail").value.trim(),password:document.getElementById("signupPassword").value,options:{emailRedirectTo:location.origin+location.pathname,data:{account_type:"seller",shop_name:document.getElementById("shopName").value.trim(),product_category:document.getElementById("shopCategory").value,description:document.getElementById("shopDescription").value.trim()}}});
+  b.disabled=false;if(error){m.textContent=error.message;return;}closeModal("sellModal");e.currentTarget.reset();showToast(data.session?"Account created.":"Check your email for the confirmation link.");
+ });
+ document.getElementById("loginForm").addEventListener("submit",async e=>{
+  e.preventDefault();const b=e.currentTarget.querySelector("button[type=submit]"),m=document.getElementById("loginMessage");b.disabled=true;m.textContent="Signing in…";
+  const {error}=await db.auth.signInWithPassword({email:document.getElementById("loginEmail").value.trim(),password:document.getElementById("loginPassword").value});
+  b.disabled=false;if(error){m.textContent=error.message;return;}closeModal("loginModal");e.currentTarget.reset();await refreshAuthUI();openModal("accountModal");await loadSellerProfile();await loadMyProducts();
+ });
+ document.getElementById("productForm").addEventListener("submit",async e=>{
+  e.preventDefault();const btn=document.getElementById("uploadProductBtn"),msg=document.getElementById("uploadMessage"),file=document.getElementById("productFile").files[0];
+  if(!file){msg.textContent="Choose a file.";return;}const ext=(file.name.split(".").pop()||"").toLowerCase();
+  if(!["pdf","png","jpg","jpeg","zip"].includes(ext)){msg.textContent="Only PDF, PNG, JPG and ZIP allowed.";return;}
+  if(file.size>50*1024*1024){msg.textContent="Maximum file size is 50 MB.";return;}
+  const price=Number(document.getElementById("productPrice").value);if(!Number.isFinite(price)||price<=0){msg.textContent="Enter a valid price.";return;}
+  btn.disabled=true;msg.textContent="Uploading…";const {data:{user}}=await db.auth.getUser();if(!user){btn.disabled=false;msg.textContent="Please log in again.";return;}
+  const path=user.id+"/"+crypto.randomUUID()+"-"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-100);
+  const {error:upErr}=await db.storage.from("digital-products").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});
+  if(upErr){btn.disabled=false;msg.textContent="Upload failed: "+upErr.message;return;}
+  const {error:dbErr}=await db.from("products").insert({seller_id:user.id,title:document.getElementById("productTitle").value.trim(),description:document.getElementById("productDescription").value.trim(),category:document.getElementById("productCategory").value,price,file_path:path,file_name:file.name,file_size:file.size,mime_type:file.type||"application/octet-stream"});
+  if(dbErr){await db.storage.from("digital-products").remove([path]);btn.disabled=false;msg.textContent="Save failed: "+dbErr.message;return;}
+  e.currentTarget.reset();btn.disabled=false;msg.textContent="Uploaded. Pending review.";await loadMyProducts();
+ });
+ async function signOut(){await db.auth.signOut();closeModal("accountModal");await refreshAuthUI();showToast("Logged out.");}
+ window.openModal=openModal;window.closeModal=closeModal;window.signOut=signOut;window.showToast=showToast;
+ db.auth.onAuthStateChange(()=>{refreshAuthUI();});
+ await refreshAuthUI();render();
+});
 </script></body></html>+Number(p.price).toFixed(2)+' · '+escapeHtml(p.status)+'</div></div>').join("");
 }
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
